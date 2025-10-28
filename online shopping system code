@@ -1,0 +1,279 @@
+package onlineshoppingsystem;
+import java.util.*;
+import java.io.*;
+import java.time.*;
+import java.time.format.*;
+
+// INTERFACE
+interface Billable {
+    double calculateTotal();
+}
+
+// ABSTRACT PRODUCT (OOP, encapsulation)
+abstract class Product {
+    private String name;
+    private double price;
+
+    public Product(String name, double price) {
+        this.name = name.trim();
+        this.price = price;
+    }
+
+    public String getName() { return name; }
+    public double getPrice() { return price; }
+    public void setPrice(double price) { this.price = price; }
+
+    public abstract String getDetails();
+
+    @Override
+    public String toString() {
+        return name + " - ₹" + price;
+    }
+}
+
+// INHERITANCE & OVERRIDING
+class ElectronicProduct extends Product {
+    private int warrantyMonths;
+
+    public ElectronicProduct(String name, double price, int warrantyMonths) {
+        super(name, price);
+        this.warrantyMonths = warrantyMonths;
+    }
+
+    public int getWarrantyMonths() {
+        return warrantyMonths;
+    }
+
+    @Override
+    public String getDetails() {
+        return getName() + " (Electronics, warranty " + warrantyMonths + " months) - ₹" + getPrice();
+    }
+}
+
+class ClothingProduct extends Product {
+    private String size;
+
+    public ClothingProduct(String name, double price, String size) {
+        super(name, price);
+        this.size = size;
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    @Override
+    public String getDetails() {
+        return getName() + " (Clothing, size " + size + ") - ₹" + getPrice();
+    }
+}
+
+// CUSTOMER (ENCAPSULATION)
+class Customer {
+    private String name;
+    private int age;
+
+    public Customer(String name, int age) {
+        this.name = formatName(name);
+        this.age = age;
+    }
+
+    private String formatName(String n) {
+        n = n.trim();
+        if (n.isEmpty()) return "Customer";
+        return Character.toUpperCase(n.charAt(0)) + n.substring(1).toLowerCase();
+    }
+
+    public String getName() { return name; }
+    public int getAge() { return age; }
+
+    @Override
+    public String toString() {
+        return name + " (" + age + " years)";
+    }
+}
+
+// CUSTOM EXCEPTION
+class InvalidChoiceException extends Exception {
+    public InvalidChoiceException(String message) {
+        super(message);
+    }
+}
+
+// THREAD FOR PROCESSING
+class LoadingThread extends Thread {
+    @Override
+    public void run() {
+        try {
+            System.out.print("Processing");
+            for (int i = 0; i < 3; i++) {
+                Thread.sleep(500);
+                System.out.print(".");
+            }
+            System.out.println();
+        } catch (InterruptedException e) {
+            System.out.println("Processing interrupted");
+        }
+    }
+}
+
+// SHOPPING CART (COLLECTIONS, FILE I/O, INTERFACE)
+class ShoppingCart implements Billable {
+    private ArrayList<Product> items = new ArrayList<>();
+    public static final double TAX_RATE = 0.05;
+    public static String storeName = "SmartShop";
+
+    public void addProduct(Product p) {
+        items.add(p);
+    }
+
+    // Method overloading - add with discount
+    public void addProduct(Product p, double discountPercent) {
+        double discounted = p.getPrice() - (p.getPrice() * discountPercent / 100.0);
+        p.setPrice(discounted); // demonstrate setter
+        items.add(p);
+    }
+
+    public void showCart() {
+        if (items.isEmpty()) {
+            System.out.println("Cart is empty.");
+            return;
+        }
+        System.out.println("\nYour Cart Items:");
+        for (Product p : items) {
+            System.out.println("- " + p.getDetails());
+        }
+    }
+
+    @Override
+    public double calculateTotal() {
+        double sum = 0;
+        for (Product p : items) sum += p.getPrice();
+        return sum + (sum * TAX_RATE);
+    }
+
+    // File handling - save bill
+    public void saveBillToFile(String customerName) {
+        try (FileWriter fw = new FileWriter("SmartShop_Bill.txt")) {
+            fw.write("SmartShop Bill\n");
+            fw.write("Customer: " + customerName + "\n");
+            fw.write("Date: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) + "\n\n");
+            for (Product p : items) fw.write(p.getDetails() + "\n");
+            fw.write("\nTotal (with tax): ₹" + String.format("%.2f", calculateTotal()) + "\n");
+            System.out.println("Bill saved to SmartShop_Bill.txt");
+        } catch (IOException e) {
+            System.out.println("Error saving bill: " + e.getMessage());
+        }
+    }
+
+    // File handling - read last bill
+    public void readLastBill() {
+        try (BufferedReader br = new BufferedReader(new FileReader("SmartShop_Bill.txt"))) {
+            System.out.println("\n--- Last saved bill ---");
+            String line;
+            while ((line = br.readLine()) != null) System.out.println(line);
+        } catch (IOException e) {
+            System.out.println("No previous bill found.");
+        }
+    }
+}
+
+// MAIN CLASS (puts everything together)
+public class SmartShop {
+    static Scanner sc = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        System.out.println("Welcome to " + ShoppingCart.storeName);
+        startShopping();
+        sc.close();
+    }
+
+    public static void startShopping() {
+        while (true) {
+            try {
+                // Catalog (array)
+                Product[] catalog = new Product[] {
+                    new ElectronicProduct("Smartphone", 25000, 24),
+                    new ElectronicProduct("Headphones", 2000, 12),
+                    new ClothingProduct("T-Shirt", 799, "M"),
+                    new ClothingProduct("Jeans", 1299, "L")
+                };
+
+                System.out.print("Enter your name: ");
+                String name = sc.nextLine();
+
+                System.out.print("Enter your age: ");
+                int age = Integer.parseInt(sc.nextLine().trim());
+
+                Customer customer = new Customer(name, age);
+                ShoppingCart cart = new ShoppingCart();
+
+                // Show catalog
+                System.out.println("\nCatalog:");
+                for (int i = 0; i < catalog.length; i++) {
+                    System.out.println((i + 1) + ". " + catalog[i].getDetails());
+                }
+
+                System.out.print("\nSelect product by number (1-" + catalog.length + "): ");
+                int idx = Integer.parseInt(sc.nextLine().trim());
+                if (idx < 1 || idx > catalog.length) throw new InvalidChoiceException("Choice out of range.");
+
+                Product chosen = catalog[idx - 1];
+
+                System.out.print("Apply discount? (y/n): ");
+                String ans = sc.nextLine().trim().toLowerCase();
+                if (ans.equals("y")) {
+                    System.out.print("Enter discount percent (e.g., 10): ");
+                    double disc = Double.parseDouble(sc.nextLine().trim());
+                    cart.addProduct(cloneProduct(chosen), disc);
+                } else {
+                    cart.addProduct(cloneProduct(chosen));
+                }
+
+                // Multithreading
+                LoadingThread loader = new LoadingThread();
+                loader.start();
+                loader.join();
+
+                cart.showCart();
+                double total = cart.calculateTotal();
+                System.out.printf("\nTotal amount (with tax): ₹%.2f\n", total);
+
+                // Save and read bill
+                cart.saveBillToFile(customer.getName());
+                cart.readLastBill();
+
+                // Feedback
+                System.out.print("\nRate your experience (1-5): ");
+                int rating = Integer.parseInt(sc.nextLine().trim());
+                String msg = "Thank you, " + customer.getName() + ". ";
+                msg += (rating >= 4) ? "We are glad you enjoyed shopping." : "We will try to improve.";
+                System.out.println(msg);
+
+                break; // exit loop after successful run
+            } catch (InvalidChoiceException | NumberFormatException e) {
+                System.out.println("Invalid input. Try again.\n");
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+            } finally {
+                System.out.println("\nSession ended at " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")));
+            }
+        }
+    }
+
+    // Helper: clone a product
+    private static Product cloneProduct(Product p) {
+        if (p instanceof ElectronicProduct) {
+            ElectronicProduct e = (ElectronicProduct) p;
+            return new ElectronicProduct(e.getName(), e.getPrice(), e.getWarrantyMonths());
+        } else if (p instanceof ClothingProduct) {
+            ClothingProduct c = (ClothingProduct) p;
+            return new ClothingProduct(c.getName(), c.getPrice(), c.getSize());
+        } else {
+            return new Product(p.getName(), p.getPrice()) {
+                @Override
+                public String getDetails() { return p.getDetails(); }
+            };
+        }
+    }
+}
